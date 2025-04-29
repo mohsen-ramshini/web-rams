@@ -1,10 +1,16 @@
 import React, { useRef, useState } from 'react';
-import { Form, Input, Select, Button, Carousel, Alert } from 'antd';
-import { LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { Form, Input, Select, Button, Carousel, Alert, Slider, Space } from 'antd';
+import { LeftOutlined, RightOutlined, PlusOutlined, MinusOutlined } from '@ant-design/icons';
+import { useGetBrands } from '../api/useGetBrands';
 
 const { Option } = Select;
 
-// مانیتورها با عکس
+interface SpecificationsProps {
+  onFormSubmit: (data: any) => void;
+  handleFinalSubmit: (data:any) => void;
+  goToPrevStep: () => void;
+}
+
 const monitorOptions = [
   { label: 'LCD Screen', value: 'lcd', img: '/images/lcd.jpg' },
   { label: 'Floor Stand', value: 'floor', img: '/images/floor-stand-screen.jpg' },
@@ -20,47 +26,68 @@ const chunkArray = (arr: any[], size: number) => {
   );
 };
 
-const CustomForm: React.FC = () => {
+const CustomForm: React.FC<SpecificationsProps> = ({ onFormSubmit, handleFinalSubmit, goToPrevStep }) => {
+  const [form] = Form.useForm();
   const [selectedMonitor, setSelectedMonitor] = useState<string>('');
   const carouselRef = useRef<any>(null);
+  const { data: brands, isLoading: brandsLoading } = useGetBrands();
+
+  const [monitorSize, setMonitorSize] = useState<number>(32);
+  const [sizeUnit, setSizeUnit] = useState<'inch' | 'cm'>('inch');
+  const [horizontalMonitors, setHorizontalMonitors] = useState<number>(1);
+  const [verticalMonitors, setVerticalMonitors] = useState<number>(1);
+
+  const monitorChunks = chunkArray(monitorOptions, 4);
 
   const handleFinish = (values: any) => {
-    console.log('Form values:', { ...values, selectedMonitor });
+    const result = {
+      ...values,
+      displayType: selectedMonitor,
+      displaySize: `${monitorSize} ${sizeUnit}`,
+      horizontalNumber: horizontalMonitors,
+      verticalNumber: verticalMonitors,
+    };
+
+    console.log('✅ Final Form Values:', result);
+
+    onFormSubmit(result);
+    handleFinalSubmit(result);
   };
 
   const handleMonitorSelect = (value: string) => {
     setSelectedMonitor(value);
   };
 
-  const monitorChunks = chunkArray(monitorOptions, 4);
+  const next = () => carouselRef.current.next();
+  const prev = () => carouselRef.current.prev();
 
-  const next = () => {
-    carouselRef.current.next();
+  const increase = (setter: (v: number) => void, value: number) => setter(value + 1);
+  const decrease = (setter: (v: number) => void, value: number) => {
+    if (value > 1) setter(value - 1);
   };
 
-  const prev = () => {
-    carouselRef.current.prev();
+  const handleSubmit = () => {
+    form.submit(); 
   };
 
   return (
-    <Form layout="vertical" onFinish={handleFinish}>
-      {/* --- Monitor Selection with Images --- */}
+    <Form layout="vertical" form={form} onFinish={handleFinish}>
+      
       <div className="border-b-4 border-b-gray-300 mb-6">
-        <h3 className="text-blue-600 font-semibold text-xl mb-2">Information about your digital signage device (your display)</h3>
-        <p>Select your digital signage device. In KiData we now call all digital signage devices Display.</p>
-        <div className="relative w-4/5 m-auto my-5">
+        <h3 className="text-blue-600 font-semibold text-xl mb-2">Information about your digital signage device</h3>
+        <p>Select your digital signage device.</p>
+
+        <div className="relative w-full sm:w-4/5 m-auto my-5">
           <Carousel ref={carouselRef} dots={true}>
             {monitorChunks.map((chunk, index) => (
               <div key={index}>
-                <div className="grid grid-cols-4 gap-4 px-8">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-4 sm:px-8">
                   {chunk.map((monitor) => (
                     <div
                       key={monitor.value}
                       onClick={() => handleMonitorSelect(monitor.value)}
                       className={`border rounded-2xl p-6 text-center cursor-pointer transition-all ${
-                        selectedMonitor === monitor.value
-                          ? 'bg-blue-500 text-white border-blue-700'
-                          : 'bg-gray-100 hover:bg-blue-100'
+                        selectedMonitor === monitor.value ? 'bg-blue-500 text-white border-blue-700' : 'bg-gray-100 hover:bg-blue-100'
                       } h-72 flex flex-col justify-center`}
                     >
                       <img
@@ -76,7 +103,6 @@ const CustomForm: React.FC = () => {
             ))}
           </Carousel>
 
-          {/* Navigation Buttons */}
           <Button
             shape="circle"
             icon={<LeftOutlined />}
@@ -90,11 +116,10 @@ const CustomForm: React.FC = () => {
             className="absolute top-1/2 right-0 transform -translate-y-1/2 z-10 bg-white shadow"
           />
 
-          {/* Selected Monitor Message */}
           {selectedMonitor && (
             <div className="mt-6 text-left">
               <Alert
-                message={`"${monitorOptions.find(item => item.value === selectedMonitor)?.label}" selected as the display. Choosing the right display is important for KiData to work properly.`}
+                message={`"${monitorOptions.find(item => item.value === selectedMonitor)?.label}" selected.`}
                 type="info"
                 showIcon
               />
@@ -103,44 +128,105 @@ const CustomForm: React.FC = () => {
         </div>
       </div>
 
-      {/* --- Dropdown List --- */}
+      {/* برند مانیتور */}
       <div className="border-b-4 border-b-gray-300 mb-6">
-        <h3 className="text-blue-600 font-semibold text-xl mb-2">Create / Select Category</h3>
-        <p>Create a category. Assign a category to your digital signage device.</p>
-        <div className="w-3/5 m-auto my-5">
+        <h3 className="text-blue-600 font-semibold text-xl mb-2">Select your display brand</h3>
+
+        <div className="w-full sm:w-3/5 m-auto my-5">
           <Form.Item
-            label="Choose Category"
-            name="category"
-            rules={[{ required: true, message: 'Please select a category' }]}
+            label="Brand"
+            name="brand"
+            rules={[{ required: true, message: 'Please select a brand' }]}
           >
-            <Select placeholder="Select a category">
-              <Option value="advertising">Advertising</Option>
-              <Option value="informational">Informational</Option>
-              <Option value="entertainment">Entertainment</Option>
+            <Select
+              placeholder="Select a brand"
+              loading={brandsLoading}
+              onChange={(value) => form.setFieldsValue({ brand: value })}
+            >
+              {brands?.map((brand: any) => (
+                <Option key={brand.id} value={brand.name}>
+                  {brand.name}
+                </Option>
+              ))}
             </Select>
           </Form.Item>
         </div>
       </div>
 
-      {/* --- Input Field --- */}
+      
       <div className="border-b-4 border-b-gray-300 mb-6">
         <h3 className="text-blue-600 font-semibold text-xl mb-2">Monitor number and size</h3>
-        <p>Define your LCD video wall</p>
-        <div className="w-3/5 m-auto my-5">
+
+        <div className="w-full sm:w-3/5 m-auto my-5 space-y-8">
+          <Form.Item label="Size of each monitor">
+            <Space direction="vertical" className="w-full">
+              <Slider
+                min={10}
+                max={100}
+                value={monitorSize}
+                onChange={(value) => setMonitorSize(value)}
+              />
+              <Space>
+                <Input
+                  type="number"
+                  value={monitorSize}
+                  onChange={(e) => setMonitorSize(Number(e.target.value))}
+                  min={1}
+                  max={200}
+                  className="w-32"
+                />
+                <Select
+                  value={sizeUnit}
+                  onChange={(value) => setSizeUnit(value)}
+                  className="w-32"
+                >
+                  <Option value="inch">Inch</Option>
+                  <Option value="cm">Centimeter</Option>
+                </Select>
+              </Space>
+            </Space>
+          </Form.Item>
+
+          <Form.Item label="Number of horizontal monitors">
+            <Space>
+              <Button icon={<MinusOutlined />} onClick={() => decrease(setHorizontalMonitors, horizontalMonitors)} />
+              <Input value={horizontalMonitors} readOnly className="w-20 text-center" />
+              <Button icon={<PlusOutlined />} onClick={() => increase(setHorizontalMonitors, horizontalMonitors)} />
+            </Space>
+          </Form.Item>
+
+          <Form.Item label="Number of vertical monitors">
+            <Space>
+              <Button icon={<MinusOutlined />} onClick={() => decrease(setVerticalMonitors, verticalMonitors)} />
+              <Input value={verticalMonitors} readOnly className="w-20 text-center" />
+              <Button icon={<PlusOutlined />} onClick={() => increase(setVerticalMonitors, verticalMonitors)} />
+            </Space>
+          </Form.Item>
+
           <Form.Item
-            label="Additional Notes"
-            name="notes"
+            label="Aspect Ratio"
+            name="aspectRatio"
+            rules={[{ required: true, message: 'Please select aspect ratio' }]}
           >
-            <Input placeholder="Enter any additional information..." />
+            <Select placeholder="Select aspect ratio">
+              <Option value="16:9">16:9 (Widescreen)</Option>
+              <Option value="4:3">4:3 (Standard)</Option>
+              <Option value="21:9">21:9 (UltraWide)</Option>
+              <Option value="1:1">1:1 (Square)</Option>
+              <Option value="9:16">9:16 (Vertical Screen)</Option>
+            </Select>
           </Form.Item>
         </div>
       </div>
 
-      {/* --- Submit Button --- */}
-      <Form.Item className="text-center">
-        {/* <Button type="primary" htmlType="submit" className="bg-blue-600 font-semibold">
-          Submit
-        </Button> */}
+      
+      <Form.Item className="text-center mt-8">
+        <Button type="primary" className="bg-blue-600 font-semibold px-10" onClick={goToPrevStep}>
+          Back
+        </Button>
+        <Button type="default" onClick={handleSubmit} className="ml-4">
+          Final Submit
+        </Button>
       </Form.Item>
     </Form>
   );

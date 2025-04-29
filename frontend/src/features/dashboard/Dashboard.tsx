@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Layout, Select, Card, Row, Col } from 'antd';
 import { Link } from 'react-router-dom';
-import Flag from 'react-world-flags'; // استفاده از import
+import Flag from 'react-world-flags'; 
 
 const { Header, Content } = Layout;
 const { Option } = Select;
@@ -22,9 +22,8 @@ const Dashboard: React.FC = () => {
             value={language}
             onChange={handleLanguageChange}
             style={{ width: 150 }}
-            dropdownStyle={{ backgroundColor: '#001529' }}
           >
-            {/* Option with flags */}
+            
             <Option value="en">
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <Flag code="GB" style={{ width: 20, height: 15, marginRight: 8 }} />
@@ -43,17 +42,14 @@ const Dashboard: React.FC = () => {
 
       <Layout>
         <Content style={{ padding: '20px' }}>
-          {/* تیتری بالای کارت‌ها */}
+          
           <div className="text-center mb-2 lg:mb-20">
             <h1 className="font-extrabold text-xl lg:text-5xl mb-5">Display Management</h1>
             <h2 className="font-semibold text-lg lg:text-2xl">
               Manage and configure your display devices efficiently
             </h2>
           </div>
-
-          {/* ردیف کارت‌ها */}
           <Row gutter={[16, 16]} justify="center" align="top">
-            {/* کارت لینک برای Create Display */}
             <Col xs={24} sm={12} md={8} lg={6}>
               <Link to="/create-display">
                 <Card
@@ -74,7 +70,6 @@ const Dashboard: React.FC = () => {
               </Link>
             </Col>
 
-            {/* کارت لینک برای Display Overview */}
             <Col xs={24} sm={12} md={8} lg={6}>
               <Link to="/display-overview">
                 <Card
